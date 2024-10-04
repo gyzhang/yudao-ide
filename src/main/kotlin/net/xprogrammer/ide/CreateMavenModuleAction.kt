@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
@@ -18,7 +19,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
 import org.jetbrains.idea.maven.model.MavenConstants
 import org.jetbrains.idea.maven.project.MavenProjectsManager
-import org.jetbrains.idea.maven.utils.MavenLog
 import org.jetbrains.idea.maven.utils.MavenUtil
 import java.io.File
 
@@ -30,6 +30,7 @@ import java.io.File
  *
  */
 class CreateMavenModuleAction : AnAction() {
+    private val logger = Logger.getInstance(CreateMavenModuleAction::class.java)
     // 芋道源码的当前版本，应该从上下文中获取的，简化为一个常量（不想写了）
     val revision = "2.2.0-snapshot"
 
@@ -58,24 +59,26 @@ class CreateMavenModuleAction : AnAction() {
                         created = createMavenModule(project, virtualFile, moduleName, revision, MavenConstants.TYPE_POM)
                     }
                 } catch (e: Exception) {
-                    MavenLog.LOG.error("${this.javaClass.simpleName} Error creating Maven module", e)
+                    logger.error("Error creating Maven module", e)
                 }
 
                 if (created) {
                     ApplicationManager.getApplication().invokeLater({
                         val psiFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
                         if (psiFile != null) {
-                            MavenLog.LOG.info("${this.javaClass.simpleName} 格式化父模块的 pom.xml 文件。")
+                            logger.info("格式化父模块的 pom.xml 文件。")
                             WriteCommandAction.runWriteCommandAction(project) {
                                 CodeStyleManager.getInstance(project).reformat(psiFile)
                             }
                         } else {
-                            MavenLog.LOG.warn("${this.javaClass.simpleName} PsiFile is null when trying to reformat.")
-                        }
-                    }, ModalityState.nonModal())
-                    MavenLog.LOG.info("${this.javaClass.simpleName} forceUpdateAllProjectsOrFindAllAvailablePomFiles")
-                    MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
 
+                            logger.warn("PsiFile is null when trying to reformat.")
+                        }
+                        logger.info("刷新 Maven 项目。")
+                        MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
+                    }, ModalityState.nonModal())
+
+                    logger.info("成功：在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。")
                     Messages.showMessageDialog(
                         project,
                         "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
@@ -142,7 +145,7 @@ class CreateMavenModuleAction : AnAction() {
             }
             return true
         } catch (e: Exception) {
-            MavenLog.LOG.error("${this.javaClass.simpleName} Failed to create Maven module: ${e.message}")
+            logger.error("Failed to create Maven module: ${e.message}")
             return false
         }
     }
