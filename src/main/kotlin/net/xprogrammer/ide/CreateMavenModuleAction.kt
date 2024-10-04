@@ -4,20 +4,22 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.idea.maven.project.MavenProjectsManager
-import org.jetbrains.idea.maven.utils.MavenUtil
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
 import org.jetbrains.idea.maven.model.MavenConstants
+import org.jetbrains.idea.maven.project.MavenProjectsManager
 import org.jetbrains.idea.maven.utils.MavenLog
+import org.jetbrains.idea.maven.utils.MavenUtil
 import java.io.File
 
 /**
@@ -28,7 +30,8 @@ import java.io.File
  *
  */
 class CreateMavenModuleAction : AnAction() {
-    val logger = Logger.getInstance(CreateMavenModuleAction::class.java)
+    // 芋道源码的当前版本，应该从上下文中获取的，简化为一个常量（不想写了）
+    val revision = "2.2.0-snapshot"
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.getData(CommonDataKeys.PROJECT)
@@ -48,32 +51,60 @@ class CreateMavenModuleAction : AnAction() {
                 Messages.getQuestionIcon()
             )
             if (!moduleName.isNullOrEmpty()) {
-                // 使用 Application.runWriteAction() 方法来包装写操作代码。这个方法确保代码在正确的上下文中执行，并处理所有必要的线程同步问题。
-                ApplicationManager.getApplication().runWriteAction {
-                    createMavenModule(project, virtualFile, moduleName)
-                }
-                // 提示模块创建成功
-                Messages.showMessageDialog(
-                    project,
-                    "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
-                    "模块创建成功",
-                    Messages.getInformationIcon()
-                )
+                var created = false
 
+                try {
+                    WriteAction.run<Exception> {
+                        created = createMavenModule(project, virtualFile, moduleName, revision, MavenConstants.TYPE_POM)
+                    }
+                } catch (e: Exception) {
+                    MavenLog.LOG.error("${this.javaClass.simpleName} Error creating Maven module", e)
+                }
+
+                if (created) {
+                    ApplicationManager.getApplication().invokeLater({
+                        val psiFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
+                        if (psiFile != null) {
+                            MavenLog.LOG.info("${this.javaClass.simpleName} 格式化父模块的 pom.xml 文件。")
+                            WriteCommandAction.runWriteCommandAction(project) {
+                                CodeStyleManager.getInstance(project).reformat(psiFile)
+                            }
+                        } else {
+                            MavenLog.LOG.warn("${this.javaClass.simpleName} PsiFile is null when trying to reformat.")
+                        }
+                    }, ModalityState.nonModal())
+                    MavenLog.LOG.info("${this.javaClass.simpleName} forceUpdateAllProjectsOrFindAllAvailablePomFiles")
+                    MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
+
+                    Messages.showMessageDialog(
+                        project,
+                        "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
+                        "模块创建成功",
+                        Messages.getInformationIcon()
+                    )
+                }
             }
         } else {
             Messages.showErrorDialog(project, "请右键单击 Maven 模块。", "错误")
         }
     }
 
-    private fun createMavenModule(project: Project, parentDir: VirtualFile, moduleName: String): Boolean {
+    private fun createMavenModule(
+        project: Project,
+        parentDir: VirtualFile,
+        moduleName: String,
+        revision: String,
+        type: String
+    ): Boolean {
         try {
             val moduleDir = parentDir.createChildDirectory(this, moduleName)
-            VfsUtil.createDirectories(moduleDir.path + "/src/main/java")
-            VfsUtil.createDirectories(moduleDir.path + "/src/main/resources")
-            VfsUtil.createDirectories(moduleDir.path + "/src/test/java")
+            if (MavenConstants.TYPE_JAR == type) {
+                VfsUtil.createDirectories(moduleDir.path + "/src/main/java")
+                VfsUtil.createDirectories(moduleDir.path + "/src/main/resources")
+                VfsUtil.createDirectories(moduleDir.path + "/src/test/java")
+                VfsUtil.createDirectories(moduleDir.path + "/src/test/resources")
+            }
 
-            // 创建pom.xml文件
             val pomContent = """
             <?xml version="1.0" encoding="UTF-8"?>
             <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -82,12 +113,12 @@ class CreateMavenModuleAction : AnAction() {
                 <modelVersion>4.0.0</modelVersion>
                 <parent>
                     <groupId>cn.iocoder.boot</groupId>
-                    <artifactId>yudao-module-demo</artifactId>
-                    <version>2.2.0-snapshot</version>
+                    <artifactId>yudao</artifactId>
+                    <version>$revision</version>
                 </parent>
             
                 <artifactId>$moduleName</artifactId>
-                <packaging>jar</packaging>
+                <packaging>pom</packaging>
                 <name>$moduleName</name>
             
                 <properties>
@@ -102,24 +133,12 @@ class CreateMavenModuleAction : AnAction() {
             // 创建 pom.xml 文件并写入内容
             val pomFile = moduleDir.createChildData(this, MavenConstants.POM_XML)
             pomFile.setBinaryContent(pomContent.toByteArray())
-
-            // 刷新 Maven 项目
-            MavenUtil.invokeAndWait(project) {
-                MavenLog.LOG.info("${this.javaClass.simpleName} forceUpdateAllProjectsOrFindAllAvailablePomFiles")
-                MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
-            }
-
             // 更新父模块的 pom.xml 文件
             val parentPomFile = parentDir.findChild(MavenConstants.POM_XML)
             if (parentPomFile != null) {
                 val parentPomContent = parentPomFile.contentsToByteArray().toString(Charsets.UTF_8)
                 val updatedParentPomContent = updateParentPom(parentPomContent, moduleName)
-
-                // 写入更新后的内容到父模块的 pom.xml
                 parentPomFile.setBinaryContent(updatedParentPomContent.toByteArray())
-                // 格式化父模块的 pom.xml 文件
-                MavenLog.LOG.info("${this.javaClass.simpleName} 格式化父模块的 pom.xml 文件。")
-                CodeStyleManager.getInstance(project).reformat(getPsiFile(project, parentPomFile)!!)
             }
             return true
         } catch (e: Exception) {
@@ -128,7 +147,9 @@ class CreateMavenModuleAction : AnAction() {
         }
     }
 
-    // 更新父 pom.xml 文件以添加新模块
+    /**
+     * 更新父 pom.xml 文件以添加新模块
+     */
     private fun updateParentPom(pomContent: String, moduleName: String): String {
         // 找到 <modules> 标签的位置
         val modulesStartTag = "<modules>"
