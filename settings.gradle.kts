@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "ide"
+rootProject.name = "YuDaoIDE"

@@ -1,21 +1,40 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
-    <id>net.xprogrammer.ide</id>
+    <id>net.xprogrammer.yudao.ide</id>
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>Create Packages in Yudao Module</name>
+    <name>YuDao IDE</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="xprogrammer@163.com" url="https://www.xprogrammer.net">xprogrammer</vendor>
+    <vendor email="xprogrammer@163.com" url="https://github.com/gyzhang/yudao-ide">xprogrammer</vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
-
+    <description><![CDATA[
+          YuDao IDE plugin
+          Features:
+       <ul>
+          <li>Create Maven Module in YuDao Source Project</li>
+          <li>Add Default Packages in API Module</li>
+          <li>Add Default Packages in BIZ Module</li>
+          <li>Example for Plugin Configuration, like 'revision' property</li>
+      </ul>
+      ]]>
+    </description>
+    <change-notes><![CDATA[
+      <h4>0.0.1-snapshot</h4>
+      <ul>
+          <li>a basic usable initial version</li>
+          <li>init snapshot version</li>
+      </ul>
+      ]]>
+    </change-notes>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <idea-version since-build="232.0"/>
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.idea.maven</depends>
 
@@ -28,7 +47,7 @@
     <actions>
         <action id="CreateMavenModuleAction" class="net.xprogrammer.ide.CreateMavenModuleAction"
                 text="创建[芋道]Maven模块"
-                description="通过代码创建Maven Module">
+                description="在[芋道]源码项目中，创建一个符合规范的Maven Module，内置默认目录，可直接承接代码生成器生成的代码。">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="WeighingNewGroup"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt M"/>
         </action>
