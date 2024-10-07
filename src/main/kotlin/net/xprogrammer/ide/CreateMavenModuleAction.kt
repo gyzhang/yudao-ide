@@ -35,9 +35,6 @@ class CreateMavenModuleAction : AnAction() {
     private val logger = Logger.getInstance(CreateMavenModuleAction::class.java)
     private val YUDAO_MODULE = "cn/iocoder/yudao/module/"
 
-    // 芋道源码的当前版本，应该从上下文中获取的，简化为一个常量（不想写了）
-    var revision = "2.2.0-snapshot"
-
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.getData(CommonDataKeys.PROJECT)
         val virtualFile: VirtualFile? = e.getData(CommonDataKeys.VIRTUAL_FILE)
@@ -67,28 +64,22 @@ class CreateMavenModuleAction : AnAction() {
                     val apiSubModuleName = moduleName + "-api";
                     val bizSubModuleName = moduleName + "-biz";
 
-                    // 读取 pom.xml 文件
-                    val inputStreamModulePom =
-                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/module.pom.xml")
-                    val pom = inputStreamModulePom?.bufferedReader().use { it?.readText() }.toString()
-                        .replace("\$moduleName", moduleName)
-
-                    val inputStreamSubModuleApiPom =
-                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/sub-module-api.pom.xml")
-                    val pomApi = inputStreamSubModuleApiPom?.bufferedReader().use { it?.readText() }.toString()
-                        .replace("\$moduleName", moduleName).replace("\$apiSubModuleName", apiSubModuleName)
-
-                    val inputStreamSubModuleBizPom =
-                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/sub-module-biz.pom.xml")
-                    val pomBiz = inputStreamSubModuleBizPom?.bufferedReader().use { it?.readText() }.toString()
-                        .replace("\$moduleName", moduleName).replace("\$bizSubModuleName", bizSubModuleName).replace("\$apiSubModuleName", apiSubModuleName)
+                    val replacements = mapOf(
+                        "moduleName" to moduleName,
+                        "apiSubModuleName" to apiSubModuleName,
+                        "bizSubModuleName" to bizSubModuleName
+                    )
+                    val pom = loadPomTemplate("yudao/ide/template/module.pom.xml", replacements)
+                    val pomApi = loadPomTemplate("yudao/ide/template/sub-module-api.pom.xml", replacements)
+                    val pomBiz = loadPomTemplate("yudao/ide/template/sub-module-biz.pom.xml", replacements)
 
                     WriteAction.run<Exception> {
                         yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
-                        yudaoModule!!.let {
+                        yudaoModule?.let {
                             createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, pomApi)
                             createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, pomBiz)
-                        }
+                        } ?: logger.warn("yudaoModule is null")
+
                         created = true
                     }
                 } catch (e: Exception) {
@@ -98,7 +89,7 @@ class CreateMavenModuleAction : AnAction() {
                 if (created) {
                     ApplicationManager.getApplication().invokeLater({
                         val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
-                        val pomFile = getPsiFile(project, virtualFile!!.findChild(MavenConstants.POM_XML))
+                        val pomFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
 
                         if (pomFile != null && subPomFile != null) {
                             logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
@@ -196,4 +187,15 @@ class CreateMavenModuleAction : AnAction() {
     private fun getPsiFile(project: Project?, pom: VirtualFile?): PsiFile? {
         return PsiManager.getInstance(project!!).findFile(pom!!)
     }
+
+    private fun loadPomTemplate(templatePath: String, replacements: Map<String, String>): String {
+        val inputStream = this::class.java.classLoader.getResourceAsStream(templatePath)
+        val pom = inputStream?.bufferedReader()?.use { it.readText() } ?: return ""
+        var result = pom
+        replacements.forEach { (key, value) ->
+            result = result.replace("\$$key", value)
+        }
+        return result
+    }
+
 }
