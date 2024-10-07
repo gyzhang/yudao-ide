@@ -22,15 +22,12 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-
+        <applicationConfigurable id="yudaoide.settings" displayName="YuDaoIDE" instance="net.xprogrammer.ide.settings.YudaoIdePluginSettings"/>
     </extensions>
+
     <actions>
-        <action id="CreatePackage" class="net.xprogrammer.ide.CreatePackageAction" text="新建Yudao包结构"
-                description="在Yudao项目模块中新建默认的包结构，符合Yudao代码生成器的结构。">
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="WeighingNewGroup"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt P"/>
-        </action>
-        <action id="CreateMavenModuleAction" class="net.xprogrammer.ide.CreateMavenModuleAction" text="创建[芋道]Maven模块"
+        <action id="CreateMavenModuleAction" class="net.xprogrammer.ide.CreateMavenModuleAction"
+                text="创建[芋道]Maven模块"
                 description="通过代码创建Maven Module">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="WeighingNewGroup"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt M"/>

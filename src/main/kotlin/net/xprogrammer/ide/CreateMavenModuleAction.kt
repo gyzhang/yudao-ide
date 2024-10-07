@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
@@ -17,6 +18,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
+import net.xprogrammer.ide.settings.RevisionSettings
 import org.jetbrains.idea.maven.model.MavenConstants
 import org.jetbrains.idea.maven.project.MavenProjectsManager
 import org.jetbrains.idea.maven.utils.MavenUtil
@@ -31,8 +33,10 @@ import java.io.File
  */
 class CreateMavenModuleAction : AnAction() {
     private val logger = Logger.getInstance(CreateMavenModuleAction::class.java)
+    private val YUDAO_MODULE = "cn/iocoder/yudao/module/"
+
     // 芋道源码的当前版本，应该从上下文中获取的，简化为一个常量（不想写了）
-    val revision = "2.2.0-snapshot"
+    var revision = "2.2.0-snapshot"
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.getData(CommonDataKeys.PROJECT)
@@ -52,11 +56,40 @@ class CreateMavenModuleAction : AnAction() {
                 Messages.getQuestionIcon()
             )
             if (!moduleName.isNullOrEmpty()) {
-                var created = false
+                // 示例代码：从插件的配置信息中获取修订版本号，后续可使用到生成的 pom.xml 文件中
+                val settings: RevisionSettings = service()
+                val storedRevision = settings.getRevision()
+                println("Stored Revision: $storedRevision")
 
+                var yudaoModule: VirtualFile? = null
+                var created: Boolean = false
                 try {
+                    val apiSubModuleName = moduleName + "-api";
+                    val bizSubModuleName = moduleName + "-biz";
+
+                    // 读取 pom.xml 文件
+                    val inputStreamModulePom =
+                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/module.pom.xml")
+                    val pom = inputStreamModulePom?.bufferedReader().use { it?.readText() }.toString()
+                        .replace("\$moduleName", moduleName)
+
+                    val inputStreamSubModuleApiPom =
+                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/sub-module-api.pom.xml")
+                    val pomApi = inputStreamSubModuleApiPom?.bufferedReader().use { it?.readText() }.toString()
+                        .replace("\$moduleName", moduleName).replace("\$apiSubModuleName", apiSubModuleName)
+
+                    val inputStreamSubModuleBizPom =
+                        this::class.java.classLoader.getResourceAsStream("yudao/ide/template/sub-module-biz.pom.xml")
+                    val pomBiz = inputStreamSubModuleBizPom?.bufferedReader().use { it?.readText() }.toString()
+                        .replace("\$moduleName", moduleName).replace("\$bizSubModuleName", bizSubModuleName).replace("\$apiSubModuleName", apiSubModuleName)
+
                     WriteAction.run<Exception> {
-                        created = createMavenModule(project, virtualFile, moduleName, revision, MavenConstants.TYPE_POM)
+                        yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
+                        yudaoModule!!.let {
+                            createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, pomApi)
+                            createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, pomBiz)
+                        }
+                        created = true
                     }
                 } catch (e: Exception) {
                     logger.error("Error creating Maven module", e)
@@ -64,11 +97,14 @@ class CreateMavenModuleAction : AnAction() {
 
                 if (created) {
                     ApplicationManager.getApplication().invokeLater({
-                        val psiFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
-                        if (psiFile != null) {
-                            logger.info("格式化父模块的 pom.xml 文件。")
+                        val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
+                        val pomFile = getPsiFile(project, virtualFile!!.findChild(MavenConstants.POM_XML))
+
+                        if (pomFile != null && subPomFile != null) {
+                            logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
                             WriteCommandAction.runWriteCommandAction(project) {
-                                CodeStyleManager.getInstance(project).reformat(psiFile)
+                                CodeStyleManager.getInstance(project).reformat(subPomFile)
+                                CodeStyleManager.getInstance(project).reformat(pomFile)
                             }
                         } else {
 
@@ -93,12 +129,11 @@ class CreateMavenModuleAction : AnAction() {
     }
 
     private fun createMavenModule(
-        project: Project,
         parentDir: VirtualFile,
         moduleName: String,
-        revision: String,
-        type: String
-    ): Boolean {
+        type: String,
+        pom: String
+    ): VirtualFile? {
         try {
             val moduleDir = parentDir.createChildDirectory(this, moduleName)
             if (MavenConstants.TYPE_JAR == type) {
@@ -106,36 +141,35 @@ class CreateMavenModuleAction : AnAction() {
                 VfsUtil.createDirectories(moduleDir.path + "/src/main/resources")
                 VfsUtil.createDirectories(moduleDir.path + "/src/test/java")
                 VfsUtil.createDirectories(moduleDir.path + "/src/test/resources")
+
+                var packagePaths = arrayOf("")
+                val packagePrefix = YUDAO_MODULE + moduleName.split('-').getOrNull(2)
+
+                if (moduleName.contains("api")){ //api子模块默认的包
+                    packagePaths = arrayOf(
+                        packagePrefix + "/api",
+                        packagePrefix + "/enums"
+                    )
+                }
+                if (moduleName.contains("biz")){ //biz子模块默认的包
+                    packagePaths = arrayOf(
+                        packagePrefix + "/controller/admin",
+                        packagePrefix + "/controller/user",
+                        packagePrefix + "/convert",
+                        packagePrefix + "/dal",
+                        packagePrefix + "/job",
+                        packagePrefix + "/mq",
+                        packagePrefix + "/service"
+                    )
+                }
+
+                packagePaths.forEach { path ->
+                    VfsUtil.createDirectoryIfMissing(moduleDir.path + "/src/main/java/" + path)
+                }
             }
-
-            val pomContent = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <project xmlns="http://maven.apache.org/POM/4.0.0"
-                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-                <modelVersion>4.0.0</modelVersion>
-                <parent>
-                    <groupId>cn.iocoder.boot</groupId>
-                    <artifactId>yudao</artifactId>
-                    <version>$revision</version>
-                </parent>
-            
-                <artifactId>$moduleName</artifactId>
-                <packaging>pom</packaging>
-                <name>$moduleName</name>
-            
-                <properties>
-                    <maven.compiler.source>17</maven.compiler.source>
-                    <maven.compiler.target>17</maven.compiler.target>
-                    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-                </properties>
-            
-            </project>
-        """.trimIndent()
-
             // 创建 pom.xml 文件并写入内容
             val pomFile = moduleDir.createChildData(this, MavenConstants.POM_XML)
-            pomFile.setBinaryContent(pomContent.toByteArray())
+            pomFile.setBinaryContent(pom.toByteArray())
             // 更新父模块的 pom.xml 文件
             val parentPomFile = parentDir.findChild(MavenConstants.POM_XML)
             if (parentPomFile != null) {
@@ -143,32 +177,20 @@ class CreateMavenModuleAction : AnAction() {
                 val updatedParentPomContent = updateParentPom(parentPomContent, moduleName)
                 parentPomFile.setBinaryContent(updatedParentPomContent.toByteArray())
             }
-            return true
+            return moduleDir
         } catch (e: Exception) {
             logger.error("Failed to create Maven module: ${e.message}")
-            return false
+            return null
         }
     }
 
     /**
-     * 更新父 pom.xml 文件以添加新模块
+     * 更新父 pom.xml 文件以添加新模块。
+     * 为了简化代码，pom.xml文件中必须存在<modules></modules>标签，提前在模板文件中提供这个标签。
      */
     private fun updateParentPom(pomContent: String, moduleName: String): String {
-        // 找到 <modules> 标签的位置
-        val modulesStartTag = "<modules>"
         val modulesEndTag = "</modules>"
-
-        if (pomContent.contains(modulesStartTag)) {
-            // 如果已经存在 <modules> 标签，直接添加新模块
-            return pomContent.replace(modulesEndTag, "    <module>$moduleName</module>\n$modulesEndTag")
-        } else {
-            // 如果不存在 <modules> 标签，创建一个
-            return pomContent.replace(
-                "<project",
-                "<project>\n    <modules>\n        <module>$moduleName</module>\n    </modules>",
-                ignoreCase = true
-            )
-        }
+        return pomContent.replace(modulesEndTag, "    <module>$moduleName</module>\n$modulesEndTag")
     }
 
     private fun getPsiFile(project: Project?, pom: VirtualFile?): PsiFile? {
