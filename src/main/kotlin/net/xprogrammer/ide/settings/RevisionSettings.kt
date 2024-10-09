@@ -3,8 +3,9 @@ package net.xprogrammer.ide.settings
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
 
-@State(name = "RevisionSettings", storages = [com.intellij.openapi.components.Storage("YuDaoIdeSettings.xml")])
+@State(name = "RevisionSettings", storages = [Storage("YuDaoIdeSettings.xml")])
 @Service
 class RevisionSettings : PersistentStateComponent<RevisionSettings.State> {
     data class State(var revision: String = "")
