@@ -41,6 +41,7 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="listener" displayType="BALLOON"/>
         <applicationConfigurable id="yudaoide.settings" displayName="YuDaoIDE" instance="net.xprogrammer.ide.settings.YudaoIdePluginSettings"/>
     </extensions>
 

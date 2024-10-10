@@ -1,10 +1,11 @@
 package net.xprogrammer.ide
 
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
@@ -103,9 +104,14 @@ class CreateMavenModuleAction : AnAction() {
                         }
                         logger.info("刷新 Maven 项目。")
                         MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
-                    }, ModalityState.nonModal())
+                    })
+
 
                     logger.info("成功：在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。")
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("listener")
+                        .createNotification("YuDao IDE", "[芋道]模块【'$moduleName'】创建成功。", NotificationType.INFORMATION)
+                        .notify(e.project)
                     Messages.showMessageDialog(
                         project,
                         "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
