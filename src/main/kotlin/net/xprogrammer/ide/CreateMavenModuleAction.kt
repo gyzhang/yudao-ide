@@ -39,90 +39,96 @@ class CreateMavenModuleAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.getData(CommonDataKeys.PROJECT)
         val virtualFile: VirtualFile? = e.getData(CommonDataKeys.VIRTUAL_FILE)
-        if (project == null || virtualFile == null) {
+        project ?: return
+        virtualFile ?: return
+
+        val module: Module? = ModuleUtil.findModuleForFile(virtualFile, project)
+        module ?: return
+        if (!MavenUtil.isMavenModule(module)) {
+            Messages.showErrorDialog(project, "请右键单击 Maven 模块。", "错误")
             return
         }
 
-        val module: Module? = ModuleUtil.findModuleForFile(virtualFile, project)
+        // 以下都是在满足maven module的基础上进行
+        // 弹出输入对话框，获取模块名
+        val moduleName = Messages.showInputDialog(
+            project,
+            "请输入模块名称：",
+            "创建[芋道]项目的 Maven 模块",
+            Messages.getQuestionIcon()
+        )
+        if (!moduleName.isNullOrEmpty()) {
+            // 示例代码：从插件的配置信息中获取修订版本号，后续可使用到生成的 pom.xml 文件中
+            val settings: RevisionSettings = service()
+            val storedRevision = settings.getRevision()
+            println("Stored Revision: $storedRevision")
 
-        if (module != null && MavenUtil.isMavenModule(module)) {
-            // 弹出输入对话框，获取模块名
-            val moduleName = Messages.showInputDialog(
-                project,
-                "请输入模块名称：",
-                "创建[芋道]项目的 Maven 模块",
-                Messages.getQuestionIcon()
-            )
-            if (!moduleName.isNullOrEmpty()) {
-                // 示例代码：从插件的配置信息中获取修订版本号，后续可使用到生成的 pom.xml 文件中
-                val settings: RevisionSettings = service()
-                val storedRevision = settings.getRevision()
-                println("Stored Revision: $storedRevision")
+            var yudaoModule: VirtualFile? = null
+            var created: Boolean = false
+            try {
+                val apiSubModuleName = moduleName + "-api";
+                val bizSubModuleName = moduleName + "-biz";
 
-                var yudaoModule: VirtualFile? = null
-                var created: Boolean = false
-                try {
-                    val apiSubModuleName = moduleName + "-api";
-                    val bizSubModuleName = moduleName + "-biz";
+                val replacements = mapOf(
+                    "moduleName" to moduleName,
+                    "apiSubModuleName" to apiSubModuleName,
+                    "bizSubModuleName" to bizSubModuleName
+                )
+                val pom = loadPomTemplate("yudao/ide/template/module.pom.xml", replacements)
+                val pomApi = loadPomTemplate("yudao/ide/template/sub-module-api.pom.xml", replacements)
+                val pomBiz = loadPomTemplate("yudao/ide/template/sub-module-biz.pom.xml", replacements)
 
-                    val replacements = mapOf(
-                        "moduleName" to moduleName,
-                        "apiSubModuleName" to apiSubModuleName,
-                        "bizSubModuleName" to bizSubModuleName
-                    )
-                    val pom = loadPomTemplate("yudao/ide/template/module.pom.xml", replacements)
-                    val pomApi = loadPomTemplate("yudao/ide/template/sub-module-api.pom.xml", replacements)
-                    val pomBiz = loadPomTemplate("yudao/ide/template/sub-module-biz.pom.xml", replacements)
+                WriteAction.run<Exception> {
+                    yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
+                    yudaoModule?.let {
+                        createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, pomApi)
+                        createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, pomBiz)
+                    } ?: logger.warn("yudaoModule is null")
 
-                    WriteAction.run<Exception> {
-                        yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
-                        yudaoModule?.let {
-                            createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, pomApi)
-                            createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, pomBiz)
-                        } ?: logger.warn("yudaoModule is null")
-
-                        created = true
-                    }
-                } catch (e: Exception) {
-                    logger.error("Error creating Maven module", e)
+                    created = true
                 }
-
-                if (created) {
-                    ApplicationManager.getApplication().invokeLater({
-                        val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
-                        val pomFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
-
-                        if (pomFile != null && subPomFile != null) {
-                            logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
-                            WriteCommandAction.runWriteCommandAction(project) {
-                                CodeStyleManager.getInstance(project).reformat(subPomFile)
-                                CodeStyleManager.getInstance(project).reformat(pomFile)
-                            }
-                        } else {
-
-                            logger.warn("PsiFile is null when trying to reformat.")
-                        }
-                        logger.info("刷新 Maven 项目。")
-                        MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
-                    })
-
-
-                    logger.info("成功：在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。")
-                    NotificationGroupManager.getInstance()
-                        .getNotificationGroup("listener")
-                        .createNotification("YuDao IDE", "[芋道]模块【'$moduleName'】创建成功。", NotificationType.INFORMATION)
-                        .notify(e.project)
-                    Messages.showMessageDialog(
-                        project,
-                        "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
-                        "模块创建成功",
-                        Messages.getInformationIcon()
-                    )
-                }
+            } catch (e: Exception) {
+                logger.error("Error creating Maven module", e)
             }
-        } else {
-            Messages.showErrorDialog(project, "请右键单击 Maven 模块。", "错误")
+
+            if (created) {
+                ApplicationManager.getApplication().invokeLater({
+                    val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
+                    val pomFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
+
+                    if (pomFile != null && subPomFile != null) {
+                        logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
+                        WriteCommandAction.runWriteCommandAction(project) {
+                            CodeStyleManager.getInstance(project).reformat(subPomFile)
+                            CodeStyleManager.getInstance(project).reformat(pomFile)
+                        }
+                    } else {
+
+                        logger.warn("PsiFile is null when trying to reformat.")
+                    }
+                    logger.info("刷新 Maven 项目。")
+                    MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
+                })
+
+
+                logger.info("成功：在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。")
+                NotificationGroupManager.getInstance()
+                    .getNotificationGroup("listener")
+                    .createNotification(
+                        "YuDao IDE",
+                        "[芋道]模块【'$moduleName'】创建成功。",
+                        NotificationType.INFORMATION
+                    )
+                    .notify(e.project)
+                Messages.showMessageDialog(
+                    project,
+                    "在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。",
+                    "模块创建成功",
+                    Messages.getInformationIcon()
+                )
+            }
         }
+
     }
 
     private fun createMavenModule(
@@ -142,13 +148,13 @@ class CreateMavenModuleAction : AnAction() {
                 var packagePaths = arrayOf("")
                 val packagePrefix = YUDAO_MODULE + moduleName.split('-').getOrNull(2)
 
-                if (moduleName.contains("api")){ //api子模块默认的包
+                if (moduleName.contains("api")) { //api子模块默认的包
                     packagePaths = arrayOf(
                         packagePrefix + "/api",
                         packagePrefix + "/enums"
                     )
                 }
-                if (moduleName.contains("biz")){ //biz子模块默认的包
+                if (moduleName.contains("biz")) { //biz子模块默认的包
                     packagePaths = arrayOf(
                         packagePrefix + "/controller/admin",
                         packagePrefix + "/controller/user",
