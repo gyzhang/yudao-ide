@@ -19,7 +19,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
-import net.xprogrammer.ide.settings.RevisionSettings
+import net.xprogrammer.ide.settings.PluginSettings
 import org.jetbrains.idea.maven.model.MavenConstants
 import org.jetbrains.idea.maven.project.MavenProjectsManager
 import org.jetbrains.idea.maven.utils.MavenUtil
@@ -59,7 +59,7 @@ class CreateMavenModuleAction : AnAction() {
         )
         if (!moduleName.isNullOrEmpty()) {
             // 示例代码：从插件的配置信息中获取修订版本号，后续可使用到生成的 pom.xml 文件中
-            val settings: RevisionSettings = service()
+            val settings: PluginSettings = service()
             val storedRevision = settings.getRevision()
             println("Stored Revision: $storedRevision")
 
