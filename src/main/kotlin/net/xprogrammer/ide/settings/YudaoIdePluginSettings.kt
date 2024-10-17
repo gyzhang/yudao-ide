@@ -13,6 +13,7 @@ class YudaoIdePluginSettings : Configurable {
     private var revisionTextField: Cell<JBTextField>? = null
     private var apiModuleTextField: Cell<JBTextField>? = null
     private var bizModuleTextField: Cell<JBTextField>? = null
+    private var modulePomTextField: Cell<JBTextField>? = null
     private var apiModulePomTextField: Cell<JBTextField>? = null
     private var bizModulePomTextField: Cell<JBTextField>? = null
 
@@ -45,14 +46,21 @@ class YudaoIdePluginSettings : Configurable {
             }
         }
 
-        row("API Module POM Path:") {  // 新增行
+        row("Module POM Path:") {
+            modulePomTextField = textField().apply {
+                component.text = settings.getModulePom()
+                align(Align.FILL)
+            }
+        }
+
+        row("API Module POM Path:") {
             apiModulePomTextField = textField().apply {
                 component.text = settings.getApiModulePom()
                 align(Align.FILL)
             }
         }
 
-        row("Biz Module POM Path:") {  // 新增行
+        row("Biz Module POM Path:") {
             bizModulePomTextField = textField().apply {
                 component.text = settings.getBizModulePom()
                 align(Align.FILL)
@@ -64,14 +72,16 @@ class YudaoIdePluginSettings : Configurable {
         return settings.getRevision() != revisionTextField?.component?.text ||
                 settings.getApiModulePackages() != apiModuleTextField?.component?.text ||
                 settings.getBizModulePackages() != bizModuleTextField?.component?.text ||
-                settings.getApiModulePom() != apiModulePomTextField?.component?.text ||
-                settings.getBizModulePom() != bizModulePomTextField?.component?.text
+                settings.getModulePom() != modulePomTextField?.component?.text ||
+                settings.getBizModulePom() != bizModulePomTextField?.component?.text ||
+                settings.getApiModulePom() != apiModulePomTextField?.component?.text
     }
 
     override fun apply() {
         settings.setRevision(revisionTextField?.component?.text ?: "")
         settings.setApiModulePackages(apiModuleTextField?.component?.text ?: "")
         settings.setBizModulePackages(bizModuleTextField?.component?.text ?: "")
+        settings.setModulePom(modulePomTextField?.component?.text ?: "")
         settings.setApiModulePom(apiModulePomTextField?.component?.text ?: "")
         settings.setBizModulePom(bizModulePomTextField?.component?.text ?: "")
     }
@@ -80,6 +90,7 @@ class YudaoIdePluginSettings : Configurable {
         revisionTextField?.component?.text = settings.getRevision()
         apiModuleTextField?.component?.text = settings.getApiModulePackages()
         bizModuleTextField?.component?.text = settings.getBizModulePackages()
+        modulePomTextField?.component?.text = settings.getModulePom()
         apiModulePomTextField?.component?.text = settings.getApiModulePom()
         bizModulePomTextField?.component?.text = settings.getBizModulePom()
     }
@@ -88,6 +99,7 @@ class YudaoIdePluginSettings : Configurable {
         revisionTextField = null
         apiModuleTextField = null
         bizModuleTextField = null
+        modulePomTextField = null
         apiModulePomTextField = null
         bizModulePomTextField = null
     }

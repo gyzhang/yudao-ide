@@ -13,8 +13,9 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
         var revision: String = "2.2.0-snapshot",
         var apiModulePackages: String = "api,enums",
         var bizModulePackages: String = "controller,convert,job,mq,service",
-        var apiModulePom: String = "",  // 新增字段
-        var bizModulePom: String = ""   // 新增字段
+        var modulePom: String = "",
+        var apiModulePom: String = "",
+        var bizModulePom: String = ""
     )
 
     private var state = State()
@@ -40,12 +41,17 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
         state.bizModulePackages = value
     }
 
-    fun getApiModulePom(): String = state.apiModulePom  // 新增getter
+    fun getModulePom(): String = state.modulePom
+    fun setModulePom(value: String) {
+        state.modulePom = value
+    }
+
+    fun getApiModulePom(): String = state.apiModulePom
     fun setApiModulePom(value: String) {
         state.apiModulePom = value
     }
 
-    fun getBizModulePom(): String = state.bizModulePom  // 新增getter
+    fun getBizModulePom(): String = state.bizModulePom
     fun setBizModulePom(value: String) {
         state.bizModulePom = value
     }
