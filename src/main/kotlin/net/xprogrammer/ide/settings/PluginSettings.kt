@@ -12,7 +12,9 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
     data class State(
         var revision: String = "2.2.0-snapshot",
         var apiModulePackages: String = "api,enums",
-        var bizModulePackages: String = "controller,convert,job,mq,service"
+        var bizModulePackages: String = "controller,convert,job,mq,service",
+        var apiModulePom: String = "",  // 新增字段
+        var bizModulePom: String = ""   // 新增字段
     )
 
     private var state = State()
@@ -36,5 +38,15 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
     fun getBizModulePackages(): String = state.bizModulePackages
     fun setBizModulePackages(value: String) {
         state.bizModulePackages = value
+    }
+
+    fun getApiModulePom(): String = state.apiModulePom  // 新增getter
+    fun setApiModulePom(value: String) {
+        state.apiModulePom = value
+    }
+
+    fun getBizModulePom(): String = state.bizModulePom  // 新增getter
+    fun setBizModulePom(value: String) {
+        state.bizModulePom = value
     }
 }

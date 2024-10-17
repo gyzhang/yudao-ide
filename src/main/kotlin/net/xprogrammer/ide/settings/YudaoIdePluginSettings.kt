@@ -13,6 +13,8 @@ class YudaoIdePluginSettings : Configurable {
     private var revisionTextField: Cell<JBTextField>? = null
     private var apiModuleTextField: Cell<JBTextField>? = null
     private var bizModuleTextField: Cell<JBTextField>? = null
+    private var apiModulePomTextField: Cell<JBTextField>? = null
+    private var bizModulePomTextField: Cell<JBTextField>? = null
 
     private val settings: PluginSettings = service()
 
@@ -42,30 +44,52 @@ class YudaoIdePluginSettings : Configurable {
                 align(Align.FILL)
             }
         }
+
+        row("API Module POM Path:") {  // 新增行
+            apiModulePomTextField = textField().apply {
+                component.text = settings.getApiModulePom()
+                align(Align.FILL)
+            }
+        }
+
+        row("Biz Module POM Path:") {  // 新增行
+            bizModulePomTextField = textField().apply {
+                component.text = settings.getBizModulePom()
+                align(Align.FILL)
+            }
+        }
     }
 
     override fun isModified(): Boolean {
         return settings.getRevision() != revisionTextField?.component?.text ||
                 settings.getApiModulePackages() != apiModuleTextField?.component?.text ||
-                settings.getBizModulePackages() != bizModuleTextField?.component?.text
+                settings.getBizModulePackages() != bizModuleTextField?.component?.text ||
+                settings.getApiModulePom() != apiModulePomTextField?.component?.text ||
+                settings.getBizModulePom() != bizModulePomTextField?.component?.text
     }
 
     override fun apply() {
         settings.setRevision(revisionTextField?.component?.text ?: "")
         settings.setApiModulePackages(apiModuleTextField?.component?.text ?: "")
         settings.setBizModulePackages(bizModuleTextField?.component?.text ?: "")
+        settings.setApiModulePom(apiModulePomTextField?.component?.text ?: "")
+        settings.setBizModulePom(bizModulePomTextField?.component?.text ?: "")
     }
 
     override fun reset() {
         revisionTextField?.component?.text = settings.getRevision()
         apiModuleTextField?.component?.text = settings.getApiModulePackages()
         bizModuleTextField?.component?.text = settings.getBizModulePackages()
+        apiModulePomTextField?.component?.text = settings.getApiModulePom()
+        bizModulePomTextField?.component?.text = settings.getBizModulePom()
     }
 
     override fun disposeUIResources() {
         revisionTextField = null
         apiModuleTextField = null
         bizModuleTextField = null
+        apiModulePomTextField = null
+        bizModulePomTextField = null
     }
 
     override fun getDisplayName(): String {
