@@ -78,9 +78,9 @@ class YudaoIdePluginSettings : Configurable {
     }
 
     override fun apply() {
-        settings.setRevision(revisionTextField?.component?.text ?: "")
-        settings.setApiModulePackages(apiModuleTextField?.component?.text ?: "")
-        settings.setBizModulePackages(bizModuleTextField?.component?.text ?: "")
+        settings.setRevision(revisionTextField?.component?.text ?: "2.2.0-snapshot")
+        settings.setApiModulePackages(apiModuleTextField?.component?.text ?: "api,enums")
+        settings.setBizModulePackages(bizModuleTextField?.component?.text ?: "controller,convert,job,mq,service")
         settings.setModulePom(modulePomTextField?.component?.text ?: "")
         settings.setApiModulePom(apiModulePomTextField?.component?.text ?: "")
         settings.setBizModulePom(bizModulePomTextField?.component?.text ?: "")

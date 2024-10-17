@@ -50,7 +50,6 @@ class CreateMavenModuleAction : AnAction() {
         }
 
         // 以下都是在满足maven module的基础上进行
-        // 弹出输入对话框，获取模块名
         val moduleName = Messages.showInputDialog(
             project,
             "请输入模块名称：",
@@ -58,11 +57,6 @@ class CreateMavenModuleAction : AnAction() {
             Messages.getQuestionIcon()
         )
         if (!moduleName.isNullOrEmpty()) {
-            // 示例代码：从插件的配置信息中获取修订版本号，后续可使用到生成的 pom.xml 文件中
-            val settings: PluginSettings = service()
-            val storedRevision = settings.getRevision()
-            println("Stored Revision: $storedRevision")
-
             var yudaoModule: VirtualFile? = null
             var created: Boolean = false
             try {
@@ -103,7 +97,6 @@ class CreateMavenModuleAction : AnAction() {
                             CodeStyleManager.getInstance(project).reformat(pomFile)
                         }
                     } else {
-
                         logger.warn("PsiFile is null when trying to reformat.")
                     }
                     logger.info("刷新 Maven 项目。")
@@ -128,7 +121,6 @@ class CreateMavenModuleAction : AnAction() {
                 )
             }
         }
-
     }
 
     private fun createMavenModule(
@@ -146,24 +138,20 @@ class CreateMavenModuleAction : AnAction() {
                 VfsUtil.createDirectories(moduleDir.path + "/src/test/resources")
 
                 var packagePaths = arrayOf("")
-                val packagePrefix = YUDAO_MODULE + moduleName.split('-').getOrNull(2)
+                val packagePrefix = YUDAO_MODULE + moduleName.split('-').getOrNull(2) + "/"
+                val settings: PluginSettings = service()
 
                 if (moduleName.contains("api")) { //api子模块默认的包
-                    packagePaths = arrayOf(
-                        packagePrefix + "/api",
-                        packagePrefix + "/enums"
-                    )
+                    val packages = settings.getApiModulePackages()
+                    packagePaths = packages.split(",")
+                        .map { "$packagePrefix$it" }
+                        .toTypedArray()
                 }
                 if (moduleName.contains("biz")) { //biz子模块默认的包
-                    packagePaths = arrayOf(
-                        packagePrefix + "/controller/admin",
-                        packagePrefix + "/controller/user",
-                        packagePrefix + "/convert",
-                        packagePrefix + "/dal",
-                        packagePrefix + "/job",
-                        packagePrefix + "/mq",
-                        packagePrefix + "/service"
-                    )
+                    val packages = settings.getBizModulePackages()
+                    packagePaths = packages.split(",")
+                        .map { "$packagePrefix$it" }
+                        .toTypedArray()
                 }
 
                 packagePaths.forEach { path ->
