@@ -9,13 +9,22 @@ import com.intellij.openapi.components.Storage
 @Service
 class PluginSettings : PersistentStateComponent<PluginSettings.State> {
 
+    companion object {
+        const val DEFAULT_REVISION = "2.2.0-snapshot"
+        const val DEFAULT_API_MODULE_PACKAGES = "api,enums"
+        const val DEFAULT_BIZ_MODULE_PACKAGES = "controller,convert,job,mq,service"
+        const val DEFAULT_MODULE_POM = ""
+        const val DEFAULT_API_MODULE_POM = ""
+        const val DEFAULT_BIZ_MODULE_POM = ""
+    }
+
     data class State(
-        var revision: String = "2.2.0-snapshot",
-        var apiModulePackages: String = "api,enums",
-        var bizModulePackages: String = "controller,convert,job,mq,service",
-        var modulePom: String = "",
-        var apiModulePom: String = "",
-        var bizModulePom: String = ""
+        var revision: String = DEFAULT_REVISION,
+        var apiModulePackages: String = DEFAULT_API_MODULE_PACKAGES,
+        var bizModulePackages: String = DEFAULT_BIZ_MODULE_PACKAGES,
+        var modulePom: String = DEFAULT_MODULE_POM,
+        var apiModulePom: String = DEFAULT_API_MODULE_POM,
+        var bizModulePom: String = DEFAULT_BIZ_MODULE_POM
     )
 
     private var state = State()
@@ -27,8 +36,8 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
     }
 
     fun getRevision(): String = state.revision
-    fun setRevision(revision: String) {
-        state.revision = revision
+    fun setRevision(value: String) {
+        state.revision = value
     }
 
     fun getApiModulePackages(): String = state.apiModulePackages

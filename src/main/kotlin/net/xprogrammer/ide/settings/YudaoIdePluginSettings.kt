@@ -73,17 +73,17 @@ class YudaoIdePluginSettings : Configurable {
                 settings.getApiModulePackages() != apiModuleTextField?.component?.text ||
                 settings.getBizModulePackages() != bizModuleTextField?.component?.text ||
                 settings.getModulePom() != modulePomTextField?.component?.text ||
-                settings.getBizModulePom() != bizModulePomTextField?.component?.text ||
-                settings.getApiModulePom() != apiModulePomTextField?.component?.text
+                settings.getApiModulePom() != apiModulePomTextField?.component?.text ||
+                settings.getBizModulePom() != bizModulePomTextField?.component?.text
     }
 
     override fun apply() {
-        settings.setRevision(revisionTextField?.component?.text ?: "2.2.0-snapshot")
-        settings.setApiModulePackages(apiModuleTextField?.component?.text ?: "api,enums")
-        settings.setBizModulePackages(bizModuleTextField?.component?.text ?: "controller,convert,job,mq,service")
-        settings.setModulePom(modulePomTextField?.component?.text ?: "")
-        settings.setApiModulePom(apiModulePomTextField?.component?.text ?: "")
-        settings.setBizModulePom(bizModulePomTextField?.component?.text ?: "")
+        settings.setRevision(revisionTextField?.component?.text ?: PluginSettings.DEFAULT_REVISION)
+        settings.setApiModulePackages(apiModuleTextField?.component?.text ?: PluginSettings.DEFAULT_API_MODULE_PACKAGES)
+        settings.setBizModulePackages(bizModuleTextField?.component?.text ?: PluginSettings.DEFAULT_BIZ_MODULE_PACKAGES)
+        settings.setModulePom(modulePomTextField?.component?.text ?: PluginSettings.DEFAULT_MODULE_POM)
+        settings.setApiModulePom(apiModulePomTextField?.component?.text ?: PluginSettings.DEFAULT_API_MODULE_POM)
+        settings.setBizModulePom(bizModulePomTextField?.component?.text ?: PluginSettings.DEFAULT_BIZ_MODULE_POM)
     }
 
     override fun reset() {
