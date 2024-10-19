@@ -16,6 +16,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -24,6 +25,8 @@ import org.jetbrains.idea.maven.model.MavenConstants
 import org.jetbrains.idea.maven.project.MavenProjectsManager
 import org.jetbrains.idea.maven.utils.MavenUtil
 import java.io.File
+import java.nio.file.Paths
+import java.time.LocalDateTime
 
 /**
  * 参考了：
@@ -35,6 +38,7 @@ import java.io.File
 class CreateMavenModuleAction : AnAction() {
     private val logger = Logger.getInstance(CreateMavenModuleAction::class.java)
     private val YUDAO_MODULE = "cn/iocoder/yudao/module/"
+    private val YUDAO_MODULE_PREFIX = "yudao-module-"
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.getData(CommonDataKeys.PROJECT)
@@ -50,33 +54,52 @@ class CreateMavenModuleAction : AnAction() {
         }
 
         // 以下都是在满足maven module的基础上进行
-        val moduleName = Messages.showInputDialog(
+        val moduleNameShort = Messages.showInputDialog(
             project,
-            "请输入模块名称：",
+            "请输入模块名称(无需带yudao-module-前缀，如demo，生成的模块为【yudao-module-demo】)：",
             "创建[芋道]项目的 Maven 模块",
             Messages.getQuestionIcon()
         )
-        if (!moduleName.isNullOrEmpty()) {
+
+        if (!moduleNameShort.isNullOrEmpty()) {
+            val moduleName = YUDAO_MODULE_PREFIX + moduleNameShort
             var yudaoModule: VirtualFile? = null
             var created: Boolean = false
             try {
                 val apiSubModuleName = moduleName + "-api";
                 val bizSubModuleName = moduleName + "-biz";
 
-                val replacements = mapOf(
+                val replacements = mapOf<String, String>( //模板文件中用到的变量。简单起见，不引入freemarker之类的模板引擎
+                    "moduleNameShort" to moduleNameShort,
                     "moduleName" to moduleName,
                     "apiSubModuleName" to apiSubModuleName,
-                    "bizSubModuleName" to bizSubModuleName
+                    "bizSubModuleName" to bizSubModuleName,
+                    "moduleCreateTime" to LocalDateTime.now().toString()
                 )
-                val pom = loadPomTemplate("yudao/ide/template/pom/module.pom.xml", replacements)
-                val pomApi = loadPomTemplate("yudao/ide/template/pom/sub-module-api.pom.xml", replacements)
-                val pomBiz = loadPomTemplate("yudao/ide/template/pom/sub-module-biz.pom.xml", replacements)
+                val readme = loadTemplate("yudao/ide/template/readme.txt", replacements)
+                val pom = loadTemplate("yudao/ide/template/pom/module.pom.xml", replacements)
+                val pomApi = loadTemplate("yudao/ide/template/pom/sub-module-api.pom.xml", replacements)
+                val pomBiz = loadTemplate("yudao/ide/template/pom/sub-module-biz.pom.xml", replacements)
+                val errorCodeJava = loadTemplate("yudao/ide/template/java/ErrorCodeConstants.java", replacements)
+
+                val moduleFiles = mapOf<String, String>(
+                    "readme.txt" to readme,
+                    MavenConstants.POM_XML to pom
+                )
+                val apiModuleFiles = mapOf<String, String>(
+                    "src/main/java/cn/iocoder/yudao/module/$moduleNameShort/enums/ErrorCodeConstants.java" to errorCodeJava,
+                    MavenConstants.POM_XML to pomApi
+                )
+                val bizModuleFiles = mapOf<String, String>(
+                    MavenConstants.POM_XML to pomBiz
+                )
 
                 WriteAction.run<Exception> {
-                    yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
+
+                    yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, moduleFiles)
                     yudaoModule?.let {
-                        createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, pomApi)
-                        createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, pomBiz)
+                        createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, apiModuleFiles)
+                        createMavenModule(it, bizSubModuleName, MavenConstants.TYPE_JAR, bizModuleFiles)
                     } ?: logger.warn("yudaoModule is null")
 
                     created = true
@@ -127,10 +150,14 @@ class CreateMavenModuleAction : AnAction() {
         parentDir: VirtualFile,
         moduleName: String,
         type: String,
-        pom: String
+        files: Map<String, String>
     ): VirtualFile? {
         try {
             val moduleDir = parentDir.createChildDirectory(this, moduleName)
+
+            if (MavenConstants.TYPE_POM == type) { // 创建模块
+                // 如果需要处理 POM 类型的逻辑可以在这里添加
+            }
             if (MavenConstants.TYPE_JAR == type) {
                 VfsUtil.createDirectories(moduleDir.path + "/src/main/java")
                 VfsUtil.createDirectories(moduleDir.path + "/src/main/resources")
@@ -141,13 +168,13 @@ class CreateMavenModuleAction : AnAction() {
                 val packagePrefix = YUDAO_MODULE + moduleName.split('-').getOrNull(2) + "/"
                 val settings: PluginSettings = service()
 
-                if (moduleName.contains("api")) { //api子模块默认的包
+                if (moduleName.contains("api")) { // api 子模块默认的包
                     val packages = settings.getApiModulePackages()
                     packagePaths = packages.split(",")
                         .map { "$packagePrefix$it" }
                         .toTypedArray()
                 }
-                if (moduleName.contains("biz")) { //biz子模块默认的包
+                if (moduleName.contains("biz")) { // biz 子模块默认的包
                     val packages = settings.getBizModulePackages()
                     packagePaths = packages.split(",")
                         .map { "$packagePrefix$it" }
@@ -158,9 +185,23 @@ class CreateMavenModuleAction : AnAction() {
                     VfsUtil.createDirectoryIfMissing(moduleDir.path + "/src/main/java/" + path)
                 }
             }
-            // 创建 pom.xml 文件并写入内容
-            val pomFile = moduleDir.createChildData(this, MavenConstants.POM_XML)
-            pomFile.setBinaryContent(pom.toByteArray())
+
+            for ((fileName, fileContent) in files) {
+                val absoluteFilePath = moduleDir.path + "/" + fileName
+                val fileParentDir = File(absoluteFilePath).parentFile
+                if (!fileParentDir.exists()) {
+                    fileParentDir.mkdirs()
+                }
+                val file = moduleDir.findFileByRelativePath(fileName)
+                if (file == null) {
+                    val dir = VirtualFileManager.getInstance().findFileByNioPath(Paths.get(fileParentDir.absolutePath))
+                    val createdFile = dir?.createChildData(this, getFileNameFromPath(fileName))
+                    createdFile?.setBinaryContent(fileContent.toByteArray())
+                } else {
+                    file.setBinaryContent(fileContent.toByteArray())
+                }
+            }
+
             // 更新父模块的 pom.xml 文件
             val parentPomFile = parentDir.findChild(MavenConstants.POM_XML)
             if (parentPomFile != null) {
@@ -168,6 +209,7 @@ class CreateMavenModuleAction : AnAction() {
                 val updatedParentPomContent = updateParentPom(parentPomContent, moduleName)
                 parentPomFile.setBinaryContent(updatedParentPomContent.toByteArray())
             }
+
             return moduleDir
         } catch (e: Exception) {
             logger.error("Failed to create Maven module: ${e.message}")
@@ -188,14 +230,29 @@ class CreateMavenModuleAction : AnAction() {
         return PsiManager.getInstance(project!!).findFile(pom!!)
     }
 
-    private fun loadPomTemplate(templatePath: String, replacements: Map<String, String>): String {
+    private fun loadTemplate(templatePath: String, replacements: Map<String, String>): String {
         val inputStream = this::class.java.classLoader.getResourceAsStream(templatePath)
-        val pom = inputStream?.bufferedReader()?.use { it.readText() } ?: return ""
-        var result = pom
+        var result = inputStream?.bufferedReader()?.use { it.readText() } ?: return ""
         replacements.forEach { (key, value) ->
             result = result.replace("\$$key", value)
         }
         return result
+    }
+
+    /**
+     * 提取文件名，不要路径
+     */
+    private fun getFileNameFromPath(filePath: String): String {
+        // 使用标准库中的 lastIndexOf 函数找到最后一个斜杠的位置
+        val lastSlashIndex = filePath.lastIndexOf('/')
+
+        // 如果找不到斜杠，说明整个字符串就是文件名
+        return if (lastSlashIndex == -1) {
+            filePath
+        } else {
+            // 从最后一个斜杠后面的部分提取文件名
+            filePath.substring(lastSlashIndex + 1)
+        }
     }
 
 }
