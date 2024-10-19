@@ -12,7 +12,7 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
     companion object {
         const val DEFAULT_REVISION = "2.2.0-snapshot"
         const val DEFAULT_API_MODULE_PACKAGES = "api,enums"
-        const val DEFAULT_BIZ_MODULE_PACKAGES = "controller,convert,job,mq,service"
+        const val DEFAULT_BIZ_MODULE_PACKAGES = "controller,dal,service"
         const val DEFAULT_MODULE_POM = ""
         const val DEFAULT_API_MODULE_POM = ""
         const val DEFAULT_BIZ_MODULE_POM = ""
