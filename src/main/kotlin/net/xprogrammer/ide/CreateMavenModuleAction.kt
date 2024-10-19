@@ -68,9 +68,9 @@ class CreateMavenModuleAction : AnAction() {
                     "apiSubModuleName" to apiSubModuleName,
                     "bizSubModuleName" to bizSubModuleName
                 )
-                val pom = loadPomTemplate("yudao/ide/template/module.pom.xml", replacements)
-                val pomApi = loadPomTemplate("yudao/ide/template/sub-module-api.pom.xml", replacements)
-                val pomBiz = loadPomTemplate("yudao/ide/template/sub-module-biz.pom.xml", replacements)
+                val pom = loadPomTemplate("yudao/ide/template/pom/module.pom.xml", replacements)
+                val pomApi = loadPomTemplate("yudao/ide/template/pom/sub-module-api.pom.xml", replacements)
+                val pomBiz = loadPomTemplate("yudao/ide/template/pom/sub-module-biz.pom.xml", replacements)
 
                 WriteAction.run<Exception> {
                     yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, pom)
