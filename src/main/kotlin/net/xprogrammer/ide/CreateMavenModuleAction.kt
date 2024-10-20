@@ -56,7 +56,7 @@ class CreateMavenModuleAction : AnAction() {
         // 以下都是在满足maven module的基础上进行
         val moduleNameShort = Messages.showInputDialog(
             project,
-            "请输入模块名称(无需带yudao-module-前缀，如demo，生成的模块为【yudao-module-demo】)：",
+            "请输入模块名称：\n(无需带yudao-module-前缀，如demo，生成的模块为【yudao-module-demo】)",
             "创建[芋道]项目的 Maven 模块",
             Messages.getQuestionIcon()
         )
