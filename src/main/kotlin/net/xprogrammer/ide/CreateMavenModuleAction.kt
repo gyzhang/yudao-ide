@@ -53,7 +53,6 @@ class CreateMavenModuleAction : AnAction() {
             return
         }
 
-        // 以下都是在满足maven module的基础上进行
         val moduleNameShort = Messages.showInputDialog(
             project,
             "请输入模块名称：\n(无需带yudao-module-前缀，如demo，生成的模块为【yudao-module-demo】)",
@@ -66,10 +65,10 @@ class CreateMavenModuleAction : AnAction() {
             var yudaoModule: VirtualFile? = null
             var created: Boolean = false
             try {
-                val apiSubModuleName = moduleName + "-api";
-                val bizSubModuleName = moduleName + "-biz";
+                val apiSubModuleName = moduleName + "-api"
+                val bizSubModuleName = moduleName + "-biz"
 
-                val replacements = mapOf<String, String>( //模板文件中用到的变量。简单起见，不引入freemarker之类的模板引擎
+                val replacements = mapOf(
                     "moduleNameShort" to moduleNameShort,
                     "moduleName" to moduleName,
                     "apiSubModuleName" to apiSubModuleName,
@@ -82,20 +81,19 @@ class CreateMavenModuleAction : AnAction() {
                 val pomBiz = loadTemplate("yudao/ide/template/pom/sub-module-biz.pom.xml", replacements)
                 val errorCodeJava = loadTemplate("yudao/ide/template/java/ErrorCodeConstants.java", replacements)
 
-                val moduleFiles = mapOf<String, String>(
+                val moduleFiles = mapOf(
                     "readme.txt" to readme,
                     MavenConstants.POM_XML to pom
                 )
-                val apiModuleFiles = mapOf<String, String>(
+                val apiModuleFiles = mapOf(
                     "src/main/java/cn/iocoder/yudao/module/$moduleNameShort/enums/ErrorCodeConstants.java" to errorCodeJava,
                     MavenConstants.POM_XML to pomApi
                 )
-                val bizModuleFiles = mapOf<String, String>(
+                val bizModuleFiles = mapOf(
                     MavenConstants.POM_XML to pomBiz
                 )
 
                 WriteAction.run<Exception> {
-
                     yudaoModule = createMavenModule(virtualFile, moduleName, MavenConstants.TYPE_POM, moduleFiles)
                     yudaoModule?.let {
                         createMavenModule(it, apiSubModuleName, MavenConstants.TYPE_JAR, apiModuleFiles)
@@ -109,23 +107,23 @@ class CreateMavenModuleAction : AnAction() {
             }
 
             if (created) {
-                ApplicationManager.getApplication().invokeLater({
-                    val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
-                    val pomFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
+                ApplicationManager.getApplication().invokeLater {
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        val subPomFile = getPsiFile(project, yudaoModule!!.findChild(MavenConstants.POM_XML))
+                        val pomFile = getPsiFile(project, virtualFile.findChild(MavenConstants.POM_XML))
 
-                    if (pomFile != null && subPomFile != null) {
-                        logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
-                        WriteCommandAction.runWriteCommandAction(project) {
+                        if (pomFile != null && subPomFile != null) {
+                            logger.info("格式化父模块和新创建模块的 pom.xml 文件。")
                             CodeStyleManager.getInstance(project).reformat(subPomFile)
                             CodeStyleManager.getInstance(project).reformat(pomFile)
+                        } else {
+                            logger.warn("PsiFile is null when trying to reformat.")
                         }
-                    } else {
-                        logger.warn("PsiFile is null when trying to reformat.")
                     }
+
                     logger.info("刷新 Maven 项目。")
                     MavenProjectsManager.getInstance(project).forceUpdateAllProjectsOrFindAllAvailablePomFiles()
-                })
-
+                }
 
                 logger.info("成功：在 '${virtualFile.path + File.separator + module.name}' 位置下创建了[芋道]模块['$moduleName']。")
                 NotificationGroupManager.getInstance()
