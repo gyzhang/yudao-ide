@@ -73,7 +73,7 @@ CREATE TABLE `$moduleNameShort_hello_world` (
 
 - 8.1 执行 sql 目录下的 sql.sql 文件，将根据表生成的菜单配置信息添加到数据库中
 - 8.2 拷贝 yudao-module-$moduleNameShort 到后端项目中，注意 ErrorCodeConstants_手动操作.java 文件中的错误码示例，并需要自行编码
-- 8.3 yudao-ui-admin-vue3 中的 src目录到前端项目中
+- 8.3 拷贝 yudao-ui-admin-vue3 中的 src 目录到前端项目中
 
 ##### 9 启动前后端项目，开始你的[芋道]编程之旅。
 

@@ -20,7 +20,7 @@
           <li>Create Maven Module in YuDao Source Project</li>
           <li>Add Default Packages in API Module</li>
           <li>Add Default Packages in BIZ Module</li>
-          <li>Example for Plugin Configuration, like 'revision' property</li>
+          <li>Use Plugin Configuration, like 'revision' property</li>
       </ul>
       ]]>
     </description>
