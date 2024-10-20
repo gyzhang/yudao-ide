@@ -75,14 +75,14 @@ class CreateMavenModuleAction : AnAction() {
                     "bizSubModuleName" to bizSubModuleName,
                     "moduleCreateTime" to LocalDateTime.now().toString()
                 )
-                val readme = loadTemplate("yudao/ide/template/readme.txt", replacements)
+                val readme = loadTemplate("yudao/ide/template/readme.md", replacements)
                 val pom = loadTemplate("yudao/ide/template/pom/module.pom.xml", replacements)
                 val pomApi = loadTemplate("yudao/ide/template/pom/sub-module-api.pom.xml", replacements)
                 val pomBiz = loadTemplate("yudao/ide/template/pom/sub-module-biz.pom.xml", replacements)
                 val errorCodeJava = loadTemplate("yudao/ide/template/java/ErrorCodeConstants.java", replacements)
 
                 val moduleFiles = mapOf(
-                    "readme.txt" to readme,
+                    "readme.md" to readme,
                     MavenConstants.POM_XML to pom
                 )
                 val apiModuleFiles = mapOf(
