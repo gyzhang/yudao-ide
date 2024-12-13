@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.xprogrammer"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    version.set("2023.2.6")
+    version.set("2022.3")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("maven"))
@@ -31,8 +31,7 @@ tasks {
     }
 
     patchPluginXml {
-        sinceBuild.set("232")
-        untilBuild.set("242.*")
+        sinceBuild.set("223")
     }
 
     signPlugin {

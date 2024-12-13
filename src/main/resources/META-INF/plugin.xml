@@ -25,6 +25,15 @@
       ]]>
     </description>
     <change-notes><![CDATA[
+      <h4>1.0.1</h4>
+      <ul>
+          <li>Verifying Plugin Compatibility</li>
+          <li>idea-version since-build="2022.3"</li>
+      </ul>
+      <h4>1.0.0</h4>
+      <ul>
+          <li>First time: Uploading the YuDao IDE to the JetBrains Marketplace</li>
+      </ul>
       <h4>0.0.1-snapshot</h4>
       <ul>
           <li>a basic usable initial version</li>
@@ -34,7 +43,7 @@
     </change-notes>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
-    <idea-version since-build="232.0"/>
+    <idea-version since-build="223"/>
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.idea.maven</depends>
 
