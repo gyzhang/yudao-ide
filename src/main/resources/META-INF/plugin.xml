@@ -43,7 +43,7 @@
     </change-notes>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
-    <idea-version since-build="223"/>
+    <idea-version since-build="223" until-build="243.*"/>
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.idea.maven</depends>
 
